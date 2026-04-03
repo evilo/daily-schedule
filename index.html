@@ -371,6 +371,61 @@ body {
 /* ─── Particle Canvas ─── */
 #particles { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:0.4; }
 body > *:not(#particles) { position:relative; z-index:1; }
+
+/* ─── Black Flash ─── */
+.check-btn-wrap { position:relative; display:inline-flex; align-items:center; justify-content:center; }
+
+@keyframes bfBurst {
+  0%   { opacity:1; transform:translate(-50%,-50%) scale(0.2); box-shadow:0 0 0 6px #000, 0 0 12px 4px #8b0000; }
+  35%  { opacity:1; transform:translate(-50%,-50%) scale(1);   box-shadow:0 0 0 3px #300, 0 0 35px 18px rgba(180,0,0,0.65); }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(2.2); box-shadow:0 0 0 0 transparent, 0 0 60px 30px rgba(180,0,0,0); }
+}
+@keyframes bfRay {
+  0%  { opacity:0; height:0; }
+  25% { opacity:1; }
+  55% { height:48px; opacity:0.85; }
+  100%{ height:58px; opacity:0; }
+}
+@keyframes bfScreen {
+  0%   { opacity:0.55; }
+  100% { opacity:0; }
+}
+@keyframes bfLabel {
+  0%   { opacity:0; transform:translate(-50%,-220%) scale(1.4); }
+  25%  { opacity:1; transform:translate(-50%,-220%) scale(1); }
+  75%  { opacity:1; }
+  100% { opacity:0; transform:translate(-50%,-220%) scale(0.8); }
+}
+
+.bf-screen {
+  position:fixed; inset:0; background:#000;
+  pointer-events:none; z-index:9990;
+  animation:bfScreen 0.4s ease-out forwards;
+}
+.bf-burst {
+  position:absolute; top:50%; left:50%;
+  width:56px; height:56px; border-radius:50%;
+  background:radial-gradient(circle, #000 0%, rgba(120,0,0,0.75) 45%, transparent 70%);
+  pointer-events:none; z-index:50;
+  animation:bfBurst 0.65s cubic-bezier(0.1,0,0.3,1) forwards;
+}
+.bf-ray {
+  position:absolute; top:50%; left:50%;
+  width:2px; height:0;
+  transform-origin:50% 0%;
+  background:linear-gradient(to bottom, #cc0000, rgba(180,0,0,0.3), transparent);
+  pointer-events:none;
+  animation:bfRay 0.65s ease-out forwards;
+}
+.bf-label {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-220%);
+  font-size:8px; font-weight:900; letter-spacing:3px;
+  color:#cc0000; white-space:nowrap;
+  text-shadow:0 0 10px rgba(200,0,0,0.9);
+  pointer-events:none; z-index:51;
+  animation:bfLabel 0.65s ease-out forwards;
+}
 </style>
 </head>
 <body data-theme="dark">
@@ -661,7 +716,7 @@ function renderBlock(b,i){
         <div class="block-activity">${act}</div>
       </div>
       <div class="block-actions">
-        <button class="check-btn ${done?'done':''}" onclick="toggleCheck('${key}',${i})">${done?'✓':''}</button>
+        <div class="check-btn-wrap"><button class="check-btn ${done?'done':''}" data-check-key="${key}" onclick="toggleCheck('${key}',${i})">${done?'✓':''}</button></div>
         <span class="block-chevron" id="chev-${i}" onclick="toggleNote(${i})">▾</span>
       </div>
     </div>
@@ -678,12 +733,43 @@ function toggleNote(i){
   c.classList.toggle('open');
 }
 
+function triggerBlackFlash(btn){
+  const screen=document.createElement('div');
+  screen.className='bf-screen';
+  document.body.appendChild(screen);
+  setTimeout(()=>screen.remove(),450);
+
+  const wrap=btn.closest('.check-btn-wrap');
+  if(!wrap)return;
+  const burst=document.createElement('div');
+  burst.className='bf-burst';
+  [0,45,90,135,180,225,270,315].forEach(angle=>{
+    const ray=document.createElement('div');
+    ray.className='bf-ray';
+    ray.style.transform=`translate(-50%,0%) rotate(${angle}deg)`;
+    ray.style.animationDelay=`${Math.random()*0.04}s`;
+    burst.appendChild(ray);
+  });
+  const label=document.createElement('div');
+  label.className='bf-label';
+  label.textContent='BLACK FLASH';
+  burst.appendChild(label);
+  wrap.appendChild(burst);
+  setTimeout(()=>burst.remove(),700);
+}
+
 function toggleCheck(key,i){
   checkedTasks[key]=!checkedTasks[key];
   saveState();
-  if(checkedTasks[key])showTaskCheer();
-  renderContent();
-  updateProgress();
+  if(checkedTasks[key]){
+    showTaskCheer();
+    const btn=document.querySelector(`.check-btn[data-check-key="${key}"]`);
+    if(btn){btn.classList.add('done');btn.textContent='✓';triggerBlackFlash(btn);}
+    setTimeout(()=>{renderContent();updateProgress();},700);
+  } else {
+    renderContent();
+    updateProgress();
+  }
 }
 
 function renderContent(){
